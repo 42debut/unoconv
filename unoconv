@@ -519,7 +519,9 @@ class Options:
         self.pipe = None
         self.port = '2002'
         self.server = '127.0.0.1'
+        self.sheet_name = None
         self.showlist = False
+        self.show_sheet_names = False
         self.stdout = False
         self.template = None
         self.timeout = 6
@@ -527,11 +529,11 @@ class Options:
 
         ### Get options from the commandline
         try:
-            opts, args = getopt.getopt (args, 'c:Dd:e:f:hi:Llo:np:s:T:t:vV',
+            opts, args = getopt.getopt (args, 'c:Dd:e:f:hi:Llo:np:s:S:T:t:vV',
                 ['connection=', 'debug', 'doctype=', 'export=', 'format=',
                  'help', 'import', 'listener', 'no-launch', 'output=',
                  'outputpath', 'password=', 'pipe=', 'port=', 'server=',
-                 'timeout=', 'show', 'stdout', 'template', 'verbose',
+                 'timeout=', 'sheet=', 'show', 'show-sheet-names', 'stdout', 'template', 'verbose',
                  'version'] )
         except getopt.error as exc:
             print('unoconv: %s, try unoconv -h for a list of all the options' % str(exc))
@@ -602,8 +604,12 @@ class Options:
                 self.port = arg
             elif opt in ['-s', '--server']:
                 self.server = arg
+            elif opt in ['-S', '--sheet']:
+                self.sheet_name = arg
             elif opt in ['--show']:
                 self.showlist = True
+            elif opt in ['--show-sheet-names']:
+                self.show_sheet_names = True
             elif opt in ['--stdout']:
                 self.stdout = True
             elif opt in ['-t', '--template']:
@@ -696,7 +702,10 @@ unoconv options:
       --password=string    provide a password to decrypt the document
   -s, --server=server      specify the server address (default: 127.0.0.1)
                              to be used by client or listener
+
+      --sheet=string       specify the sheet to use
       --show               list the available output formats
+      --show-sheet-names   list the available sheet names in spreadsheet
       --stdout             write output to stdout
   -t, --template=file      import the styles from template (.ott)
   -T, --timeout=secs       timeout after secs if connection to listener fails
@@ -847,6 +856,30 @@ class Convertor:
 
             if not document:
                 raise UnoException("The document '%s' could not be opened." % inputurl, None)
+
+
+            if op.show_sheet_names:
+                sheetNames = []
+                sheetIndex = 0
+                sheets = document.getSheets()
+                try:
+                    while True:
+                        sheet = sheets.getByIndex(sheetIndex)
+                        sheetNames.append(sheet.getName())
+                        sheetIndex += 1
+                except Exception:
+                    pass
+                print("\n".join(sheetNames))
+                phase = "dispose"
+                document.dispose()
+                document.close(True)
+                return
+
+
+            if op.sheet_name:
+                sheets = document.getSheets()
+                sheets.moveByName(op.sheet_name, 0)
+
 
             ### Import style template
             phase = "import-style"
